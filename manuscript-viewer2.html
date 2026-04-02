@@ -439,7 +439,7 @@
 
   <!-- ── HEADER ── -->
   <header>
-    <a href="/contents-list.html" class="btn-back" draggable="false" aria-label="Back to contents">
+    <a href="/digital_museum/contents-list.html" class="btn-back" draggable="false" aria-label="Back to contents">
       <span class="arrow-l">←</span>
       <span class="back-label" id="lbl-back">Collection</span>
     </a>
@@ -815,7 +815,7 @@
       bar.style.animation = 'none';
       void bar.offsetWidth;
       bar.style.animation = 'idleShrink 120s linear forwards';
-      idleTimer = setTimeout(() => { window.location.href = '/'; }, 120000);
+      idleTimer = setTimeout(() => { window.location.href = '/digital_museum'; }, 120000);
     }
     ['touchstart','mousemove','keydown','click','scroll'].forEach(ev =>
       document.addEventListener(ev, resetIdle, { passive: true })
