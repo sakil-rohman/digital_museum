@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#050a14" />
+  <title>Manuscript Viewer — Digital Museum of Xasipaat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400;1,500&family=Cinzel:wght@400;600;700&family=Noto+Serif+Bengali:wght@300;400;500;600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --gold:          #c9a84c;
+      --gold-light:    #e8cc7e;
+      --gold-dim:      #7a5f28;
+      --gold-glow:     rgba(201,168,76,0.32);
+      --bg-deep:       #050a14;
+      --bg-panel:      #080f1e;
+      --bg-panel-r:    #06111d;
+      --bg-mid:        #0a1628;
+      --border-subtle: rgba(201,168,76,0.12);
+      --border-med:    rgba(201,168,76,0.28);
+      --text-primary:  #f0e8d5;
+      --text-body:     #c8bfaf;
+      --text-muted:    #6a7a8a;
+      --text-dim:      #3a4a5a;
+      --header-h:      80px;
+      --footer-h:      72px;
+    }
+
+    html, body {
+      width: 100vw; height: 100vh;
+      overflow: hidden;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+      font-family: 'Inter', sans-serif;
+    }
+
+    /* ── BACKGROUND ── */
+    .bg {
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 10% 30%, #091524 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 90% 70%, #0a1628 0%, transparent 55%),
+        linear-gradient(170deg, #050a14 0%, #070d1a 50%, #050a14 100%);
+    }
+    .bg::after {
+      content: ''; position: absolute; inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity: 0.28; pointer-events: none;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: fixed; top: 0; left: 0; right: 0;
+      height: var(--header-h); z-index: 30;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 32px;
+      background: linear-gradient(180deg, rgba(5,10,20,0.97) 0%, rgba(5,10,20,0.88) 100%);
+      border-bottom: 1px solid var(--border-subtle);
+      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+      opacity: 0;
+      animation: fadeDown 0.7s ease forwards 0.1s;
+    }
+
+    .btn-back {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 13px 26px; min-height: 50px;
+      background: transparent;
+      border: 1px solid var(--gold-dim); border-radius: 8px;
+      color: var(--gold); font-family: 'Cinzel', serif;
+      font-size: 0.75rem; letter-spacing: 0.2em; text-transform: uppercase;
+      text-decoration: none; cursor: pointer; white-space: nowrap;
+      transition: background 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s, transform 0.2s;
+    }
+    .btn-back:hover {
+      background: rgba(201,168,76,0.1); border-color: var(--gold);
+      color: var(--gold-light); box-shadow: 0 0 16px rgba(201,168,76,0.14);
+      transform: translateX(-3px);
+    }
+    .btn-back:active { transform: scale(0.97); }
+    .arrow-l { font-size: 1.1em; transition: transform 0.3s; }
+    .btn-back:hover .arrow-l { transform: translateX(-4px); }
+
+    .header-center {
+      position: absolute; left: 50%; transform: translateX(-50%);
+      text-align: center; pointer-events: none; min-width: 0;
+    }
+    .header-eyebrow {
+      display: block; font-family: 'Cinzel', serif;
+      font-size: 0.6rem; letter-spacing: 0.32em;
+      color: var(--gold-dim); text-transform: uppercase; margin-bottom: 3px;
+    }
+    .header-ms-title {
+      display: block; font-family: 'Cinzel', serif;
+      font-size: clamp(0.95rem, 1.5vw, 1.25rem); font-weight: 600;
+      letter-spacing: 0.06em; color: var(--text-primary);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 38vw;
+    }
+
+    /* 3-button language toggle */
+    .lang-toggle {
+      display: flex; gap: 0;
+      border: 1px solid var(--gold-dim); border-radius: 6px; overflow: hidden;
+      flex-shrink: 0;
+    }
+    .lang-btn {
+      padding: 11px 18px; min-height: 50px;
+      background: transparent; border: none; border-right: 1px solid var(--gold-dim);
+      color: var(--text-muted); font-family: 'Cinzel', serif;
+      font-size: 0.68rem; letter-spacing: 0.1em; cursor: pointer;
+      transition: background 0.3s, color 0.3s; white-space: nowrap;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .lang-btn:last-child { border-right: none; }
+    .lang-btn.active, .lang-btn:hover { background: rgba(201,168,76,0.14); color: var(--gold-light); }
+    .lang-btn.active { background: rgba(201,168,76,0.2); }
+
+    /* ── SPLIT BODY ── */
+    .split-body {
+      position: fixed;
+      top: var(--header-h); bottom: var(--footer-h);
+      left: 0; right: 0; z-index: 10;
+      display: flex;
+      opacity: 0;
+      animation: riseIn 0.8s cubic-bezier(0.22,1,0.36,1) forwards 0.35s;
+    }
+
+    /* ── LEFT PANEL ── */
+    .panel-left {
+      width: 50%; height: 100%;
+      display: flex; flex-direction: column;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border-subtle);
+      overflow: hidden; position: relative;
+    }
+
+    .img-stage {
+      flex: 1; position: relative; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      background:
+        radial-gradient(ellipse 80% 70% at 50% 40%, #091828 0%, #050a14 100%);
+    }
+
+    /* Glow frame */
+    .img-stage::before {
+      content: ''; position: absolute; inset: 16px;
+      border: 1px solid rgba(201,168,76,0.15);
+      border-radius: 6px; pointer-events: none; z-index: 2;
+      box-shadow:
+        inset 0 0 40px rgba(201,168,76,0.04),
+        0 0 60px rgba(201,168,76,0.06);
+    }
+
+    .img-wrap {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      padding: 28px; position: relative; z-index: 1;
+    }
+
+    .ms-image {
+      max-width: 100%; max-height: 100%;
+      object-fit: contain;
+      border-radius: 4px;
+      box-shadow:
+        0 8px 48px rgba(0,0,0,0.65),
+        0 0 0 1px rgba(201,168,76,0.12),
+        0 0 30px rgba(201,168,76,0.05);
+      transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), filter 0.3s ease;
+      filter: brightness(0.92) sepia(0.12) contrast(1.05);
+      transform-origin: center center;
+    }
+
+    /* Page number badge */
+    .page-badge {
+      position: absolute; top: 22px; left: 22px; z-index: 3;
+      padding: 6px 14px;
+      background: rgba(5,10,20,0.82);
+      border: 1px solid rgba(201,168,76,0.3);
+      border-radius: 4px;
+      font-family: 'Cinzel', serif; font-size: 0.68rem;
+      letter-spacing: 0.2em; color: var(--gold);
+      backdrop-filter: blur(4px);
+    }
+
+    /* Zoom controls */
+    .zoom-controls {
+      position: absolute; bottom: 22px; right: 22px; z-index: 3;
+      display: flex; gap: 6px;
+    }
+    .btn-zoom {
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(5,10,20,0.82); border: 1px solid rgba(201,168,76,0.28);
+      border-radius: 6px; color: var(--gold);
+      font-size: 1.2rem; font-weight: 300; cursor: pointer;
+      backdrop-filter: blur(4px);
+      transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-zoom:hover {
+      background: rgba(201,168,76,0.12); border-color: var(--gold);
+      box-shadow: 0 0 12px rgba(201,168,76,0.2);
+    }
+    .btn-zoom:active { transform: scale(0.94); }
+
+    /* Image nav strip */
+    .img-nav {
+      flex-shrink: 0;
+      height: 64px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px;
+      border-top: 1px solid var(--border-subtle);
+      background: rgba(5,10,20,0.6);
+      gap: 16px;
+    }
+
+    .btn-page {
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 0 22px; height: 44px;
+      background: transparent;
+      border: 1px solid var(--gold-dim); border-radius: 8px;
+      color: var(--gold); font-family: 'Cinzel', serif;
+      font-size: 0.7rem; letter-spacing: 0.18em; text-transform: uppercase;
+      cursor: pointer; white-space: nowrap;
+      transition: background 0.3s, border-color 0.3s, color 0.3s, box-shadow 0.3s, transform 0.2s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-page:hover {
+      background: rgba(201,168,76,0.1); border-color: var(--gold);
+      color: var(--gold-light); box-shadow: 0 0 14px rgba(201,168,76,0.15);
+    }
+    .btn-page:active { transform: scale(0.96); }
+    .btn-page:disabled {
+      opacity: 0.3; cursor: not-allowed; pointer-events: none;
+    }
+
+    .page-dots {
+      display: flex; gap: 8px; align-items: center;
+    }
+    .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--gold-dim); cursor: pointer;
+      transition: background 0.3s, transform 0.3s;
+    }
+    .dot.active { background: var(--gold); transform: scale(1.4); }
+
+    /* ── RIGHT PANEL ── */
+    .panel-right {
+      width: 50%; height: 100%;
+      display: flex; flex-direction: column;
+      background: var(--bg-panel-r);
+      overflow: hidden;
+    }
+
+    .translation-header {
+      flex-shrink: 0;
+      padding: 22px 32px 18px;
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .trans-label {
+      font-family: 'Cinzel', serif; font-size: 0.65rem;
+      letter-spacing: 0.3em; color: var(--gold-dim); text-transform: uppercase;
+    }
+    .trans-mode-badge {
+      font-family: 'Cormorant Garamond', serif; font-size: 0.82rem;
+      font-style: italic; color: var(--text-muted);
+    }
+
+    .translation-body {
+      flex: 1;
+      overflow-y: auto; overflow-x: hidden;
+      padding: 32px 36px 36px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(201,168,76,0.2) transparent;
+    }
+    .translation-body::-webkit-scrollbar { width: 4px; }
+    .translation-body::-webkit-scrollbar-track { background: transparent; }
+    .translation-body::-webkit-scrollbar-thumb {
+      background: rgba(201,168,76,0.2); border-radius: 2px;
+    }
+
+    /* Translation content blocks */
+    .trans-block {
+      transition: opacity 0.35s ease;
+    }
+    .trans-block.hidden { display: none; }
+    .trans-block.fading { opacity: 0; }
+
+    /* Section separator for bilingual */
+    .bilingual-sep {
+      display: flex; align-items: center; gap: 16px;
+      margin: 36px 0;
+    }
+    .bilingual-sep .sep-line {
+      flex: 1; height: 1px;
+      background: linear-gradient(90deg, rgba(201,168,76,0.3), transparent);
+    }
+    .bilingual-sep .sep-line.right {
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,0.3));
+    }
+    .bilingual-sep .sep-diamond {
+      width: 6px; height: 6px; background: var(--gold-dim);
+      transform: rotate(45deg); flex-shrink: 0;
+    }
+
+    /* Assamese text */
+    .text-as-label {
+      font-family: 'Cinzel', serif; font-size: 0.6rem;
+      letter-spacing: 0.3em; color: var(--gold-dim);
+      text-transform: uppercase; margin-bottom: 18px; display: block;
+    }
+    .text-as {
+      font-family: 'Noto Serif Bengali', serif;
+      font-size: clamp(1.05rem, 1.6vw, 1.2rem);
+      font-weight: 400; line-height: 2;
+      color: var(--text-body); letter-spacing: 0.02em;
+    }
+    .text-as .verse-num {
+      font-size: 0.72rem; color: var(--gold-dim);
+      font-family: 'Cinzel', serif; letter-spacing: 0.1em;
+      vertical-align: super; margin-right: 4px;
+    }
+
+    /* English text */
+    .text-en-label {
+      font-family: 'Cinzel', serif; font-size: 0.6rem;
+      letter-spacing: 0.3em; color: var(--gold-dim);
+      text-transform: uppercase; margin-bottom: 18px; display: block;
+    }
+    .text-en {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.1rem, 1.7vw, 1.3rem);
+      font-weight: 400; line-height: 1.85;
+      color: var(--text-body); letter-spacing: 0.01em;
+    }
+    .text-en em { color: var(--gold-light); font-style: italic; }
+    .text-en .para { margin-bottom: 20px; }
+    .text-en .para:last-child { margin-bottom: 0; }
+
+    /* Footnote */
+    .footnote {
+      margin-top: 32px; padding-top: 20px;
+      border-top: 1px solid var(--border-subtle);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.82rem; font-style: italic;
+      color: var(--text-muted); line-height: 1.7;
+    }
+    .footnote strong {
+      font-family: 'Cinzel', serif; font-size: 0.65rem;
+      letter-spacing: 0.15em; color: var(--gold-dim);
+      font-style: normal; font-weight: 400;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: var(--footer-h); z-index: 20;
+      display: flex; align-items: center; justify-content: center;
+      gap: 40px;
+      background: linear-gradient(0deg, rgba(5,10,20,0.97) 0%, rgba(5,10,20,0.82) 100%);
+      border-top: 1px solid var(--border-subtle);
+      backdrop-filter: blur(10px);
+      opacity: 0;
+      animation: fadeUp 0.7s ease forwards 0.5s;
+    }
+    .footer-meta {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 0.8rem; font-style: italic; color: var(--text-dim);
+      letter-spacing: 0.1em;
+    }
+    .footer-sep {
+      width: 4px; height: 4px; border-radius: 50%;
+      background: var(--gold-dim); flex-shrink: 0;
+    }
+    .idle-bar {
+      position: absolute; bottom: 0; left: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--gold-dim), var(--gold), var(--gold-dim));
+      width: 100%;
+      transform-origin: left;
+      animation: idleShrink 120s linear forwards;
+    }
+    @keyframes idleShrink {
+      from { transform: scaleX(1); }
+      to   { transform: scaleX(0); }
+    }
+
+    /* ── KEYFRAMES ── */
+    @keyframes fadeDown {
+      from { opacity: 0; transform: translateY(-14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(22px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeSwitch {
+      0%   { opacity: 0; transform: translateY(8px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    .anim-switch {
+      animation: fadeSwitch 0.35s cubic-bezier(0.22,1,0.36,1) forwards;
+    }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 900px) {
+      .split-body { flex-direction: column; }
+      .panel-left, .panel-right { width: 100%; height: 50%; }
+      .panel-left { border-right: none; border-bottom: 1px solid var(--border-subtle); }
+    }
+    @media (max-width: 640px) {
+      header { padding: 0 16px; }
+      .btn-back .back-label { display: none; }
+      .btn-back { padding: 13px 16px; }
+      .header-ms-title { max-width: 28vw; font-size: 0.9rem; }
+      .lang-btn { padding: 11px 10px; font-size: 0.62rem; }
+      .translation-body { padding: 20px 22px 24px; }
+    }
+  </style>
+</head>
+<body oncontextmenu="return false;">
+
+  <div class="bg"></div>
+
+  <!-- ── HEADER ── -->
+  <header>
+    <a href="/contents-list.html" class="btn-back" draggable="false" aria-label="Back to contents">
+      <span class="arrow-l">←</span>
+      <span class="back-label" id="lbl-back">Collection</span>
+    </a>
+
+    <div class="header-center">
+      <span class="header-eyebrow" id="lbl-eyebrow">Manuscript Viewer</span>
+      <span class="header-ms-title" id="lbl-ms-title">Hastir Buranji</span>
+    </div>
+
+    <div class="lang-toggle" role="group" aria-label="Language selection">
+      <button class="lang-btn" id="btn-as" onclick="setLang('as')" aria-pressed="false">অসমীয়া</button>
+      <button class="lang-btn active" id="btn-en" onclick="setLang('en')" aria-pressed="true">English</button>
+    </div>
+  </header>
+
+  <!-- ── SPLIT BODY ── -->
+  <div class="split-body">
+
+    <!-- LEFT: Image Panel -->
+    <div class="panel-left">
+      <div class="img-stage">
+        <div class="page-badge" id="pageBadge">Folio 01 · Recto</div>
+
+        <div class="img-wrap" id="imgWrap">
+          <img
+            class="ms-image"
+            id="msImage"
+            src="old1.jpg"
+            alt="Hastir Buranji manuscript folio 1"
+            draggable="false"
+          />
+        </div>
+
+        <div class="zoom-controls">
+          <button class="btn-zoom" onclick="zoom(1)" aria-label="Zoom in" title="Zoom in">＋</button>
+          <button class="btn-zoom" id="btnZoomReset" onclick="zoom(0)" aria-label="Reset zoom" title="Reset" style="font-size:0.78rem; letter-spacing:0.04em; font-family:'Cinzel',serif;">1:1</button>
+          <button class="btn-zoom" onclick="zoom(-1)" aria-label="Zoom out" title="Zoom out">－</button>
+        </div>
+      </div>
+
+      <!-- Image navigation -->
+      <div class="img-nav">
+        <button class="btn-page" id="btnPrev" onclick="changePage(-1)" disabled>
+          ← <span id="lbl-prev">Previous</span>
+        </button>
+
+        <div class="page-dots" id="pageDots"></div>
+
+        <button class="btn-page" id="btnNext" onclick="changePage(1)">
+          <span id="lbl-next">Next</span> →
+        </button>
+      </div>
+    </div><!-- /panel-left -->
+
+    <!-- RIGHT: Translation Panel -->
+    <div class="panel-right">
+      <div class="translation-header">
+        <span class="trans-label" id="lbl-trans-header">Translation</span>
+        <span class="trans-mode-badge" id="modeBadge">English</span>
+      </div>
+
+      <div class="translation-body" id="translationBody">
+        <!-- Injected by JS -->
+      </div>
+    </div><!-- /panel-right -->
+
+  </div><!-- /split-body -->
+
+  <!-- ── FOOTER ── -->
+  <footer>
+    <span class="footer-meta" id="lbl-collection">Digital Museum of Xasipaat Manuscripts</span>
+    <div class="footer-sep"></div>
+    <span class="footer-meta" id="lbl-folio-info">Folio 1 of 4 · Xasipaat · c. 1584</span>
+    <div class="footer-sep"></div>
+    <span class="footer-meta" id="lbl-idle-note">Auto-returning home in 2 minutes</span>
+    <div class="idle-bar" id="idleBar"></div>
+  </footer>
+
+  <script>
+    // ── Disable kiosk abuse
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('dragstart',    e => e.preventDefault());
+    document.addEventListener('keydown', e => {
+      if (['F5','F12'].includes(e.key) ||
+          (e.ctrlKey && 'rRuUsSpPaA'.includes(e.key))) e.preventDefault();
+    });
+
+    // ── DATA ──────────────────────────────────────────────────────────────
+    const pages = [
+      {
+        folio: 'Folio 01 · Recto',
+        img:   'old1.jpg',
+        imgAlt:'Hastir Buranji folio 1',
+        as: {
+          verses: [
+            'প্ৰথম অধ্যায়ৰ আৰম্ভণি — শ্ৰী গণেশায় নমঃ, শ্ৰী সৰস্বত্যৈ নমঃ।',
+            'আহোম ৰজা চুখাম্ফাৰ শাসনকালত ৰাজ হাতীসকলৰ বিষয়ে এক বিস্তৃত বিৱৰণ লিখা হৈছিল। এই পাণ্ডুলিপিত হাতীৰ প্ৰশিক্ষণ, তেওঁলোকৰ যত্ন, আৰু যুদ্ধক্ষেত্ৰত তেওঁলোকৰ বীৰত্বৰ কথা বৰ্ণনা কৰা হৈছে।',
+            'ৰজাৰ হাতীশালত সেই সময়ত এক সহস্ৰতকৈও অধিক হাতী আছিল। তাৰে মুখ্য হাতীটোৰ নাম আছিল "দিগধ্বজ" — যিটো যুদ্ধত অজেয় আছিল।',
+            'প্ৰতিটো হাতীক বিশেষ মহাউত (হাতী চলোৱা মানুহ) নিযুক্ত কৰা হৈছিল। মহাউতসকলে হাতীক সংগীতৰ মাধ্যমত শান্ত কৰিছিল আৰু গভীৰ বন্ধুত্বৰ সম্পৰ্ক গঢ়িছিল।',
+          ],
+        },
+        en: {
+          paras: [
+            'Chapter the First — In the name of the Almighty, this chronicle commences under the auspices of the great Ahom Kingdom.',
+            'During the reign of King <em>Sukhaampha</em>, a meticulous record was kept of the royal war elephants — creatures considered sacred intermediaries between the mortal realm and the divine. This manuscript details their training regimens, the rituals surrounding their care, and the celebrated feats of valor they performed upon the fields of war.',
+            'The royal elephant stables housed upward of a thousand beasts during their height. Among them, the most celebrated was <em>Digadhwaj</em> — "He Who Bears the Banner of Horizons" — an elephant said to be invincible in battle, whose trumpeting alone was believed to scatter the enemy\'s resolve.',
+            'Each elephant was entrusted to a dedicated <em>mahout</em>, a master keeper whose bond with his charge transcended mere duty. These keepers employed ancient melodies played on bamboo pipes to calm their animals, and the relationship formed was considered among the most sacred of all the kingdom\'s bonds.',
+          ],
+        },
+      },
+      {
+        folio: 'Folio 02 · Verso',
+        img:   'old2.jpg',
+        imgAlt:'Hastir Buranji folio 2',
+        as: {
+          verses: [
+            'দ্বিতীয় অধ্যায় — হাতীৰ প্ৰশিক্ষণ পদ্ধতি আৰু যুদ্ধৰ কলা।',
+            'হাতীক প্ৰশিক্ষণ দিয়াৰ বাবে বিশেষ বিদ্যালয় স্থাপন কৰা হৈছিল। তিনি বছৰ বয়সৰ পৰাই হাতীৰ শিক্ষা আৰম্ভ হৈছিল। প্ৰথমে তেওঁলোকক মানুহৰ সান্নিধ্যত অভ্যস্ত কৰোৱা হৈছিল।',
+            'যুদ্ধৰ সময়ত হাতীৰ পিঠিত "হাওদা" নামৰ কাঠৰ গঢ়া সুৰক্ষিত বাহন ৰখা হৈছিল। তাৰ পৰা যোদ্ধাসকলে তীৰ নিক্ষেপ কৰিছিল আৰু বৰশী মাৰিছিল।',
+            'উৎসৱৰ সময়ত হাতীসকলক সোণ-ৰূপৰ অলংকাৰেৰে সজোৱা হৈছিল। ৰজাৰ শোভাযাত্ৰাত আগত থকা হাতীটো সকলোতকৈ মৰ্যাদাপূৰ্ণ স্থান দখল কৰিছিল।',
+          ],
+        },
+        en: {
+          paras: [
+            'Chapter the Second — On the methods of elephant training and the ancient arts of war conducted from their backs.',
+            'Dedicated institutions were established for the purpose of elephant instruction. Training commenced from the third year of life and proceeded with extraordinary patience. The earliest lessons concerned habituation to human proximity — to drums, to smoke, to the cacophony of massed warriors.',
+            'In battle, each elephant carried upon its back a wooden fortress called the <em>hauda</em>, from which archers loosed volleys and spearmen thrust down upon the enemy below. The elevation granted an incomparable tactical advantage — it was said that one well-trained war elephant was equal in battlefield value to two hundred foot soldiers.',
+            'Upon festival occasions, the elephants were adorned in ornaments of gold and silver, their tusks banded with gleaming rings. The lead elephant in the royal procession occupied the position of highest honor — preceding even the king\'s own palanquin — for in the eyes of the kingdom, the greatest elephant was itself a manifestation of divine sovereignty.',
+          ],
+        },
+      },
+      {
+        folio: 'Folio 03 · Recto',
+        img:   'old3.jpeg',
+        imgAlt:'Hastir Buranji folio 3',
+        as: {
+          verses: [
+            'তৃতীয় অধ্যায় — যুদ্ধ ক্ষেত্ৰত হাতীৰ বীৰত্বৰ বিৱৰণ।',
+            '১৬৩৭ চনত মোগল সেনাৰ বিৰুদ্ধে যুদ্ধত আহোম হাতীবাহিনীয়ে এক ঐতিহাসিক বিজয় অৰ্জন কৰিছিল। "দিগধ্বজ" নামৰ হাতীটোৱে মোগল ঘোড়সৱাৰ সেনাক একাকীভাৱে চতৰাই পঠিয়াইছিল বুলি কোৱা হয়।',
+            'হাতীৰ স্মৃতিশক্তি অসাধাৰণ আছিল। এবাৰ আহত হোৱা হাতীয়ে বছৰৰ পিছতো সেই শত্ৰুক চিনি পাইছিল। তেওঁলোকৰ আনুগত্য ৰজাঘৰৰ সৈতে মৃত্যুৰ পাছতো বজাই ৰখা হৈছিল বুলি বিশ্বাস কৰা হৈছিল।',
+            'প্ৰতিটো যুদ্ধৰ পিছত বীৰ হাতীক সোণৰ তাবিজ পিন্ধোৱা হৈছিল আৰু তেওঁলোকৰ নামত বিশেষ পূজা অনুষ্ঠিত হৈছিল।',
+          ],
+        },
+        en: {
+          paras: [
+            'Chapter the Third — Of remarkable feats of valor performed by the elephant corps in the wars of the kingdom.',
+            'In the campaigns of 1637 against the forces of the Mughal Empire, the Ahom elephant battalions achieved a decisive and celebrated victory that passed into legend. <em>Digadhwaj</em> alone is said to have routed a full regiment of Mughal cavalry — his charge described in this manuscript as "a mountain in motion, the earth itself risen to war."',
+            'The memory of the war elephant was considered extraordinary by all who studied them. A beast once wounded by a particular enemy\'s weapon was said to recognize that same adversary years hence, and to pursue him with singular determination. Their loyalty to the household of the king was believed to persist even beyond death — and it was customary to perform memorial rites for fallen elephants with the same solemnity accorded fallen generals.',
+            'After each campaign, elephants who had distinguished themselves were awarded golden amulets fastened about their necks, and special rites of thanksgiving were conducted in their names at the temple of <em>Ganesha</em> — the elephant-headed lord who governed all wisdom and beginnings.',
+          ],
+        },
+      },
+      {
+        folio: 'Folio 04 · Verso',
+        img:   'old2.jpg',
+        imgAlt:'Hastir Buranji folio 4',
+        as: {
+          verses: [
+            'চতুৰ্থ অধ্যায় — হাতীৰ মৃত্যু আৰু শেষ সংস্কাৰৰ বিষয়ে।',
+            'এজন ৰাজকীয় হাতীৰ মৃত্যুক ৰাষ্ট্ৰীয় শোকৰ সমতুল্য গণ্য কৰা হৈছিল। তিনিদিনৰ বাবে ৰাজধানীত সমস্ত উৎসৱ বন্ধ ৰখা হৈছিল। ৰজাই নিজেই শোকৰ বেশ ধাৰণ কৰিছিল।',
+            'মৃত হাতীক সুগন্ধি কাঠেৰে দাহ কৰা হৈছিল। তেওঁৰ ছাই পবিত্ৰ ব্ৰহ্মপুত্ৰ নদীত বিসৰ্জন দিয়া হৈছিল — ঠিক যেনেকৈ এজন মহান যোদ্ধাৰ শেষ বিদায় দিয়া হয়।',
+            'এই পাণ্ডুলিপিখন লিখাৰ উদ্দেশ্য আছিল ভৱিষ্যৎ প্ৰজন্মই যাতে এই মহান হাতীসকলৰ বীৰত্বৰ কথা পাহৰি নাযায়। সিহঁত কেৱল যুদ্ধৰ সঁজুলি নাছিল — সিহঁত আহোম সাম্ৰাজ্যৰ আত্মাৰ প্ৰতীক আছিল।',
+          ],
+        },
+        en: {
+          paras: [
+            'Chapter the Fourth and Final — Concerning the death rites accorded to the royal elephants, and the purposes of this chronicle.',
+            'The death of a royal war elephant was treated as an occasion of national mourning equivalent to the loss of a great general. For three days, all festivities ceased in the capital. The king himself adopted the garments of mourning, and the mahout of the fallen beast was granted leave from all duties for a period of forty days, to observe the grief appropriate to one who has lost a brother.',
+            'The body of the deceased elephant was consumed upon a pyre of fragrant sandalwood and sacred tulsi. The ashes were committed to the holy waters of the Brahmaputra river — as one commends the remains of the mightiest of warriors — with prayers sung in the ancient Ahom tongue that no priest still living fully understands.',
+            'This chronicle was composed so that generations yet unborn might know of these magnificent creatures and never allow their memory to fade from the land of Assam. They were not mere instruments of war — they were the living soul of the empire, the breathing emblems of its grandeur, courage, and sacred bond between all living things beneath the sky.',
+          ],
+        },
+      },
+    ];
+
+    // ── STATE
+    let currentPage = 0;
+    let currentLang = 'en';
+    let zoomLevel   = 1;
+    const zoomStep  = 0.25;
+    const zoomMin   = 0.5;
+    const zoomMax   = 3.0;
+
+    // ── LABEL SETS (en / as only)
+    const labels = {
+      en: {
+        back:        'Collection',
+        eyebrow:     'Manuscript Viewer',
+        transHeader: 'Translation',
+        prev:        'Previous',
+        next:        'Next',
+        modeBadge:   'English',
+        idleNote:    'Auto-returning home in 2 minutes',
+        textLabel:   'ENGLISH TRANSLATION',
+      },
+      as: {
+        back:        'সংগ্ৰহ',
+        eyebrow:     'পাণ্ডুলিপি দৰ্শক',
+        transHeader: 'অনুবাদ',
+        prev:        'আগৰ পৃষ্ঠা',
+        next:        'পিছৰ পৃষ্ঠা',
+        modeBadge:   'অসমীয়া',
+        idleNote:    '২ মিনিটত গৃহলৈ উভতিব',
+        textLabel:   'মূল অসমীয়া',
+      },
+    };
+
+    // ── RENDER PAGE
+    function renderPage() {
+      const p   = pages[currentPage];
+      const lbl = labels[currentLang];
+
+      // Header labels
+      document.getElementById('lbl-back').textContent    = lbl.back;
+      document.getElementById('lbl-eyebrow').textContent = lbl.eyebrow;
+      document.getElementById('pageBadge').textContent   = p.folio;
+
+      // Image fade swap
+      const img = document.getElementById('msImage');
+      img.style.opacity = '0';
+      img.style.transition = 'opacity 0.4s ease';
+      img.src = p.img;
+      img.alt = p.imgAlt;
+      img.onload = () => { img.style.opacity = '1'; };
+
+      // Footer
+      document.getElementById('lbl-folio-info').textContent =
+        `Folio ${currentPage + 1} of ${pages.length} · Xasipaat · c. 1584`;
+      document.getElementById('lbl-idle-note').textContent = lbl.idleNote;
+
+      // Nav buttons
+      document.getElementById('btnPrev').disabled = currentPage === 0;
+      document.getElementById('btnNext').disabled = currentPage === pages.length - 1;
+      document.getElementById('lbl-prev').textContent = lbl.prev;
+      document.getElementById('lbl-next').textContent = lbl.next;
+
+      // Dots
+      const dots = document.getElementById('pageDots');
+      dots.innerHTML = '';
+      pages.forEach((_, i) => {
+        const d = document.createElement('div');
+        d.className = 'dot' + (i === currentPage ? ' active' : '');
+        d.onclick = () => { currentPage = i; renderPage(); };
+        dots.appendChild(d);
+      });
+
+      // Translation panel header
+      document.getElementById('lbl-trans-header').textContent = lbl.transHeader;
+      document.getElementById('modeBadge').textContent        = lbl.modeBadge;
+
+      // Translation body
+      renderTranslation(p, lbl);
+    }
+
+    // ── RENDER TRANSLATION (en or as — no bilingual)
+    function renderTranslation(p, lbl) {
+      const body = document.getElementById('translationBody');
+      body.innerHTML = '';
+      body.scrollTop = 0;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'trans-block anim-switch';
+
+      if (currentLang === 'as') {
+        wrap.appendChild(buildAsBlock(p, lbl));
+      } else {
+        wrap.appendChild(buildEnBlock(p, lbl));
+      }
+
+      wrap.appendChild(buildFootnote());
+      body.appendChild(wrap);
+    }
+
+    function buildAsBlock(p, lbl) {
+      const div = document.createElement('div');
+
+      const label = document.createElement('span');
+      label.className = 'text-as-label';
+      label.textContent = lbl.textLabel;
+      div.appendChild(label);
+
+      const text = document.createElement('div');
+      text.className = 'text-as';
+      p.as.verses.forEach((v, i) => {
+        const line = document.createElement('p');
+        line.style.marginBottom = '20px';
+        line.innerHTML = `<span class="verse-num">${String(i + 1).padStart(2, '0')}</span>${v}`;
+        text.appendChild(line);
+      });
+      div.appendChild(text);
+      return div;
+    }
+
+    function buildEnBlock(p, lbl) {
+      const div = document.createElement('div');
+
+      const label = document.createElement('span');
+      label.className = 'text-en-label';
+      label.textContent = lbl.textLabel;
+      div.appendChild(label);
+
+      const text = document.createElement('div');
+      text.className = 'text-en';
+      p.en.paras.forEach(para => {
+        const el = document.createElement('p');
+        el.className = 'para';
+        el.innerHTML = para;
+        text.appendChild(el);
+      });
+      div.appendChild(text);
+      return div;
+    }
+
+    function buildFootnote() {
+      const fn = document.createElement('div');
+      fn.className = 'footnote';
+      fn.innerHTML = `<strong>SCHOLARLY NOTE</strong><br/>
+        This folio belongs to the <em>Hastir Buranji</em> collection held at the Assam State Museum, Guwahati.
+        The manuscript is inscribed on <em>xasipaat</em> (bark of the <em>Aquilaria agallocha</em> tree) using
+        traditional turmeric-based ink. Estimated composition: late 16th century.`;
+      return fn;
+    }
+
+    // ── ZOOM (smooth, clamped, resets on page change)
+    function zoom(dir) {
+      const img = document.getElementById('msImage');
+      if (dir === 0) {
+        zoomLevel = 1;
+      } else {
+        zoomLevel = parseFloat(
+          Math.min(zoomMax, Math.max(zoomMin, zoomLevel + dir * zoomStep)).toFixed(2)
+        );
+      }
+      img.style.transition = 'transform 0.3s cubic-bezier(0.22,1,0.36,1)';
+      img.style.transform  = `scale(${zoomLevel})`;
+
+      // Update zoom label on 1:1 button
+      const resetBtn = document.getElementById('btnZoomReset');
+      if (resetBtn) resetBtn.textContent = zoomLevel === 1 ? '1:1' : `${Math.round(zoomLevel * 100)}%`;
+    }
+
+    // ── PAGE NAV
+    function changePage(dir) {
+      const next = currentPage + dir;
+      if (next < 0 || next >= pages.length) return;
+      currentPage = next;
+      zoomLevel   = 1;
+      const img = document.getElementById('msImage');
+      img.style.transition = 'none';
+      img.style.transform  = 'scale(1)';
+      const resetBtn = document.getElementById('btnZoomReset');
+      if (resetBtn) resetBtn.textContent = '1:1';
+      renderPage();
+    }
+
+    // ── LANGUAGE SWITCH
+    function setLang(lang) {
+      currentLang = lang;
+      ['as', 'en'].forEach(l => {
+        const btn = document.getElementById('btn-' + l);
+        if (!btn) return;
+        btn.classList.toggle('active', l === lang);
+        btn.setAttribute('aria-pressed', l === lang ? 'true' : 'false');
+      });
+      renderPage();
+    }
+
+    // ── IDLE TIMER → home after 2 min
+    let idleTimer;
+    function resetIdle() {
+      clearTimeout(idleTimer);
+      const bar = document.getElementById('idleBar');
+      bar.style.animation = 'none';
+      void bar.offsetWidth;
+      bar.style.animation = 'idleShrink 120s linear forwards';
+      idleTimer = setTimeout(() => { window.location.href = '/'; }, 120000);
+    }
+    ['touchstart','mousemove','keydown','click','scroll'].forEach(ev =>
+      document.addEventListener(ev, resetIdle, { passive: true })
+    );
+    resetIdle();
+
+    // ── INIT
+    renderPage();
+  </script>
+</body>
+</html>

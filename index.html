@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#050a14" />
+  <title>Digital Museum of Xasipaat Manuscripts</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Cinzel:wght@400;600;700&family=Noto+Serif+Bengali:wght@300;400;600&display=swap" rel="stylesheet" />
+
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    :root {
+      --gold:        #c9a84c;
+      --gold-light:  #e8cc7e;
+      --gold-dim:    #7a5f28;
+      --bg-deep:     #050a14;
+      --bg-mid:      #0a1628;
+      --text-primary: #f0e8d5;
+      --text-muted:  #8a7a62;
+      --glow-color:  rgba(201, 168, 76, 0.45);
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      cursor: default;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    /* ── BACKGROUND ── */
+    .bg {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      background:
+        radial-gradient(ellipse 80% 60% at 50% 10%,  #0d1f3c 0%, transparent 65%),
+        radial-gradient(ellipse 60% 50% at 80% 80%,  #0a1628 0%, transparent 55%),
+        radial-gradient(ellipse 50% 40% at 15% 70%,  #0c1a30 0%, transparent 55%),
+        linear-gradient(160deg, #050a14 0%, #07111f 50%, #050a14 100%);
+    }
+
+    /* Grain texture overlay */
+    .bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    /* Decorative corner ornaments */
+    .corner {
+      position: fixed;
+      width: 140px;
+      height: 140px;
+      z-index: 1;
+      opacity: 0;
+      animation: fadeIn 1.8s ease forwards;
+      animation-delay: 1.2s;
+    }
+    .corner svg { width: 100%; height: 100%; }
+    .corner--tl { top: 24px;    left: 24px; }
+    .corner--tr { top: 24px;    right: 24px;  transform: scaleX(-1); }
+    .corner--bl { bottom: 24px; left: 24px;   transform: scaleY(-1); }
+    .corner--br { bottom: 24px; right: 24px;  transform: scale(-1,-1); }
+
+    /* Thin horizontal rule lines */
+    .hline {
+      position: fixed;
+      left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, var(--gold-dim) 20%, var(--gold) 50%, var(--gold-dim) 80%, transparent 100%);
+      opacity: 0;
+      animation: fadeIn 1.4s ease forwards;
+      animation-delay: 1s;
+      z-index: 1;
+    }
+    .hline--top    { top: 90px; }
+    .hline--bottom { bottom: 90px; }
+
+    /* ── LANGUAGE TOGGLE ── */
+    .lang-toggle {
+      position: fixed;
+      top: 45px;
+      right: 101px;
+      z-index: 10;
+      display: flex;
+      gap: 0;
+      border: 1px solid var(--gold-dim);
+      border-radius: 6px;
+      overflow: hidden;
+      opacity: 0;
+      animation: fadeIn 1s ease forwards;
+      animation-delay: 1.4s;
+    }
+
+    .lang-btn {
+      padding: 10px 22px;
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      transition: background 0.3s, color 0.3s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .lang-btn:first-child { border-right: 1px solid var(--gold-dim); }
+
+    .lang-btn.active,
+    .lang-btn:hover {
+      background: rgba(201, 168, 76, 0.12);
+      color: var(--gold-light);
+    }
+    .lang-btn.active {
+      background: rgba(201, 168, 76, 0.18);
+    }
+
+    /* ── MAIN STAGE ── */
+    .stage {
+      position: relative;
+      z-index: 2;
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      padding: 0 40px;
+    }
+
+    /* ── EMBLEM ── */
+    .emblem {
+      width: 90px;
+      height: 90px;
+      margin-bottom: 36px;
+      opacity: 0;
+      animation: riseIn 1.2s cubic-bezier(0.22,1,0.36,1) forwards;
+      animation-delay: 0.2s;
+    }
+
+    /* ── DIVIDER ── */
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+      opacity: 0;
+      animation: riseIn 1.2s cubic-bezier(0.22,1,0.36,1) forwards;
+      animation-delay: 0.5s;
+    }
+    .divider-line {
+      width: 80px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold));
+    }
+    .divider-line.right {
+      background: linear-gradient(90deg, var(--gold), transparent);
+    }
+    .divider-diamond {
+      width: 8px; height: 8px;
+      background: var(--gold);
+      transform: rotate(45deg);
+      box-shadow: 0 0 10px var(--glow-color);
+    }
+
+    /* ── TITLES ── */
+    .title-wrap {
+      text-align: center;
+      opacity: 0;
+      animation: riseIn 1.2s cubic-bezier(0.22,1,0.36,1) forwards;
+      animation-delay: 0.45s;
+      margin-bottom: 10px;
+    }
+
+    .title-label {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(0.65rem, 1vw, 0.78rem);
+      letter-spacing: 0.35em;
+      color: var(--gold);
+      text-transform: uppercase;
+      margin-bottom: 18px;
+      display: block;
+    }
+
+    .title-main {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(2rem, 4.5vw, 4.2rem);
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: 0.04em;
+      color: var(--text-primary);
+      text-shadow:
+        0 0 60px rgba(201,168,76,0.18),
+        0 2px 4px rgba(0,0,0,0.6);
+      margin-bottom: 0;
+    }
+
+    .title-main .highlight {
+      color: var(--gold-light);
+      display: block;
+    }
+
+    .subtitle-bn {
+      font-family: 'Noto Serif Bengali', serif;
+      font-size: clamp(1rem, 2vw, 1.5rem);
+      font-weight: 300;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      margin-top: 8px;
+      display: block;
+    }
+
+    .subtitle-wrap {
+      text-align: center;
+      opacity: 0;
+      animation: riseIn 1.2s cubic-bezier(0.22,1,0.36,1) forwards;
+      animation-delay: 0.65s;
+      margin-bottom: 56px;
+    }
+
+    .subtitle {
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(1.1rem, 2.2vw, 1.75rem);
+      font-weight: 300;
+      font-style: italic;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    .subtitle .gold-word { color: var(--gold); font-style: normal; font-weight: 400; }
+
+    /* ── START BUTTON ── */
+    .btn-wrap {
+      opacity: 0;
+      animation: riseIn 1.2s cubic-bezier(0.22,1,0.36,1) forwards;
+      animation-delay: 0.85s;
+    }
+
+    .btn-start {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      min-width: 280px;
+      min-height: 70px;
+      padding: 0 52px;
+      background: transparent;
+      border: 1.5px solid var(--gold);
+      border-radius: 60px;
+      color: var(--gold-light);
+      font-family: 'Cinzel', serif;
+      font-size: clamp(0.9rem, 1.4vw, 1.1rem);
+      font-weight: 600;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      text-decoration: none;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition:
+        box-shadow 0.4s ease,
+        border-color 0.4s ease,
+        color 0.4s ease,
+        transform 0.2s ease;
+      -webkit-tap-highlight-color: transparent;
+      box-shadow:
+        0 0 18px rgba(201,168,76,0.1),
+        inset 0 0 0 0 rgba(201,168,76,0);
+    }
+
+    .btn-start::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 120% 100% at 50% 110%, rgba(201,168,76,0.22) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.5s ease;
+      border-radius: inherit;
+    }
+
+    .btn-start::after {
+      content: '';
+      position: absolute;
+      top: 50%; left: 50%;
+      width: 0; height: 0;
+      background: rgba(201, 168, 76, 0.12);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      transition: width 0.5s ease, height 0.5s ease, opacity 0.5s ease;
+      opacity: 0;
+    }
+
+    .btn-start:hover {
+      border-color: var(--gold-light);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow:
+        0 0 40px rgba(201,168,76,0.35),
+        0 0 80px rgba(201,168,76,0.15),
+        0 8px 32px rgba(0,0,0,0.4),
+        inset 0 0 24px rgba(201,168,76,0.08);
+    }
+
+    .btn-start:hover::before { opacity: 1; }
+
+    .btn-start:active {
+      transform: scale(0.97) translateY(0);
+      box-shadow:
+        0 0 20px rgba(201,168,76,0.25),
+        inset 0 0 10px rgba(201,168,76,0.1);
+    }
+
+    .btn-start:active::after {
+      width: 400px; height: 400px; opacity: 0;
+    }
+
+    .btn-arrow {
+      display: inline-block;
+      font-size: 1.1em;
+      transition: transform 0.3s ease;
+    }
+    .btn-start:hover .btn-arrow { transform: translateX(5px); }
+
+    /* Pulse ring around button */
+    .btn-pulse {
+      position: absolute;
+      inset: -8px;
+      border-radius: 80px;
+      border: 1px solid rgba(201,168,76,0.2);
+      animation: pulseRing 3s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .btn-pulse:nth-child(2) { inset: -18px; animation-delay: 1s; opacity: 0.5; }
+
+    /* ── FOOTER CAPTION ── */
+    .footer-caption {
+      position: fixed;
+      bottom: 32px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: clamp(0.7rem, 1vw, 0.85rem);
+      letter-spacing: 0.22em;
+      color: var(--text-muted);
+      white-space: nowrap;
+      opacity: 0;
+      animation: fadeIn 1.4s ease forwards;
+      animation-delay: 1.6s;
+      z-index: 5;
+    }
+
+    /* ── KEYFRAMES ── */
+    @keyframes fadeIn {
+      to { opacity: 1; }
+    }
+
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(24px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes pulseRing {
+      0%   { opacity: 0.6; transform: scale(1); }
+      50%  { opacity: 0.15; transform: scale(1.04); }
+      100% { opacity: 0.6; transform: scale(1); }
+    }
+
+    /* Assamese content (hidden by default) */
+    .content-en { display: block; }
+    .content-as { display: none; }
+    body.lang-as .content-en { display: none; }
+    body.lang-as .content-as { display: block; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .corner { width: 80px; height: 80px; }
+      .hline--top    { top: 70px; }
+      .hline--bottom { bottom: 70px; }
+      .emblem { width: 64px; height: 64px; margin-bottom: 24px; }
+      .btn-start { min-width: 220px; padding: 0 36px; }
+      .lang-toggle { top: 18px; right: 18px; }
+    }
+
+    @media (max-width: 480px) {
+      .title-main { font-size: 1.6rem; }
+      .divider-line { width: 48px; }
+    }
+  </style>
+</head>
+<body oncontextmenu="return false;">
+
+  <!-- Background -->
+  <div class="bg"></div>
+
+  <!-- Horizontal rules -->
+  <!-- <div class="hline hline--top"></div>
+  <div class="hline hline--bottom"></div> -->
+
+  <!-- Corner ornaments -->
+  <div class="corner corner--tl">
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 90 L10 10 L90 10" stroke="#c9a84c" stroke-width="1.2" stroke-opacity="0.6" fill="none"/>
+      <path d="M10 50 L30 50" stroke="#c9a84c" stroke-width="0.8" stroke-opacity="0.4"/>
+      <path d="M50 10 L50 30" stroke="#c9a84c" stroke-width="0.8" stroke-opacity="0.4"/>
+      <rect x="6" y="6" width="8" height="8" fill="#c9a84c" opacity="0.7"/>
+      <circle cx="10" cy="50" r="2" fill="#c9a84c" opacity="0.5"/>
+      <circle cx="50" cy="10" r="2" fill="#c9a84c" opacity="0.5"/>
+    </svg>
+  </div>
+  <div class="corner corner--tr">
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 90 L10 10 L90 10" stroke="#c9a84c" stroke-width="1.2" stroke-opacity="0.6" fill="none"/>
+      <path d="M10 50 L30 50" stroke="#c9a84c" stroke-width="0.8" stroke-opacity="0.4"/>
+      <path d="M50 10 L50 30" stroke="#c9a84c" stroke-width="0.8" stroke-opacity="0.4"/>
+      <rect x="6" y="6" width="8" height="8" fill="#c9a84c" opacity="0.7"/>
+      <circle cx="10" cy="50" r="2" fill="#c9a84c" opacity="0.5"/>
+      <circle cx="50" cy="10" r="2" fill="#c9a84c" opacity="0.5"/>
+    </svg>
+  </div>
+  <div class="corner corner--bl">
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 90 L10 10 L90 10" stroke="#c9a84c" stroke-width="1.2" stroke-opacity="0.6" fill="none"/>
+      <path d="M10 50 L30 50" stroke="#c9a84c" stroke-width="0.8" stroke-opacity="0.4"/>
+      <path d="M50 10 L50 30" stroke="#c9a84c" stroke-width="0.8" stroke-opacity="0.4"/>
+      <rect x="6" y="6" width="8" height="8" fill="#c9a84c" opacity="0.7"/>
+      <circle cx="10" cy="50" r="2" fill="#c9a84c" opacity="0.5"/>
+      <circle cx="50" cy="10" r="2" fill="#c9a84c" opacity="0.5"/>
+    </svg>
+  </div>
+  <div class="corner corner--br">
+    <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M10 90 L10 10 L90 10" stroke="#c9a84c" stroke-width="1.2" stroke-opacity="0.6" fill="none"/>
+      <path d="M10 50 L30 50" stroke="#c9a84c" stroke-width="0.8" stroke-opacity="0.4"/>
+      <path d="M50 10 L50 30" stroke="#c9a84c" stroke-width="0.8" stroke-opacity="0.4"/>
+      <rect x="6" y="6" width="8" height="8" fill="#c9a84c" opacity="0.7"/>
+      <circle cx="10" cy="50" r="2" fill="#c9a84c" opacity="0.5"/>
+      <circle cx="50" cy="10" r="2" fill="#c9a84c" opacity="0.5"/>
+    </svg>
+  </div>
+
+  <!-- Language Toggle -->
+  <div class="lang-toggle" role="group" aria-label="Language selection">
+    <button class="lang-btn active" id="btn-en" onclick="setLang('en')" aria-pressed="true">English</button>
+    <button class="lang-btn" id="btn-as" onclick="setLang('as')" aria-pressed="false">অসমীয়া</button>
+  </div>
+
+  <!-- Main Stage -->
+  <main class="stage">
+
+    <!-- Emblem SVG -->
+    <div class="emblem" aria-hidden="true">
+      <svg viewBox="0 0 90 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="45" cy="45" r="42" stroke="#c9a84c" stroke-width="0.8" stroke-opacity="0.5"/>
+        <circle cx="45" cy="45" r="36" stroke="#c9a84c" stroke-width="0.4" stroke-opacity="0.3"/>
+        <!-- Stylized lotus / manuscript motif -->
+        <path d="M45 15 C45 15 38 28 38 38 C38 42 41 45 45 45 C49 45 52 42 52 38 C52 28 45 15 45 15Z" fill="#c9a84c" opacity="0.25"/>
+        <path d="M45 75 C45 75 38 62 38 52 C38 48 41 45 45 45 C49 45 52 48 52 52 C52 62 45 75 45 75Z" fill="#c9a84c" opacity="0.25"/>
+        <path d="M15 45 C15 45 28 38 38 38 C42 38 45 41 45 45 C45 49 42 52 38 52 C28 52 15 45 15 45Z" fill="#c9a84c" opacity="0.25"/>
+        <path d="M75 45 C75 45 62 38 52 38 C48 38 45 41 45 45 C45 49 48 52 52 52 C62 52 75 45 75 45Z" fill="#c9a84c" opacity="0.25"/>
+        <!-- Diagonals -->
+        <path d="M45 15 C45 15 54 27 57 38 C58 42 55.5 45 52 45 C48.5 45 46.5 42 47 38 C48 27 45 15 45 15Z" fill="#c9a84c" opacity="0.15"/>
+        <path d="M45 75 C45 75 54 63 57 52 C58 48 55.5 45 52 45 C48.5 45 46.5 48 47 52 C48 63 45 75 45 75Z" fill="#c9a84c" opacity="0.15"/>
+        <circle cx="45" cy="45" r="5" fill="#c9a84c" opacity="0.7"/>
+        <circle cx="45" cy="45" r="2.5" fill="#e8cc7e"/>
+      </svg>
+    </div>
+
+    <!-- Divider top -->
+    <div class="divider" aria-hidden="true">
+      <div class="divider-line"></div>
+      <div class="divider-diamond"></div>
+      <div class="divider-line right"></div>
+    </div>
+
+    <!-- Title -->
+    <div class="title-wrap">
+      <span class="title-label content-en">Digital Museum · Est. 2025</span>
+      <span class="title-label content-as">ডিজিটেল সংগ্ৰহালয় · প্ৰতিষ্ঠা ২০২৫</span>
+
+      <h1 class="title-main">
+        <span class="content-en">
+          Digital Museum of<br/>
+          <span class="highlight">Xasipaat Manuscripts</span>
+        </span>
+        <span class="content-as" style="font-family:'Noto Serif Bengali',serif; font-size:clamp(1.4rem,3.2vw,3rem); line-height:1.3;">
+          চাহিপাত পাণ্ডুলিপিৰ<br/>
+          <span class="highlight">ডিজিটেল সংগ্ৰহালয়</span>
+        </span>
+      </h1>
+    </div>
+
+    <!-- Subtitle -->
+    <div class="subtitle-wrap">
+      <p class="subtitle content-en">
+        Explore the <span class="gold-word">Heritage</span> of Assam
+      </p>
+      <p class="subtitle content-as" style="font-family:'Noto Serif Bengali',serif; letter-spacing:0.04em;">
+        অসমৰ <span class="gold-word">ঐতিহ্য</span> অন্বেষণ কৰক
+      </p>
+    </div>
+
+    <!-- START Button -->
+    <div class="btn-wrap">
+      <a href="/contents-list.html" class="btn-start" role="button" aria-label="Start exploring the museum" draggable="false">
+        <div class="btn-pulse"></div>
+        <div class="btn-pulse"></div>
+        <span class="content-en">START EXPLORING</span>
+        <span class="content-as" style="font-family:'Noto Serif Bengali',serif; letter-spacing:0.06em;">আৰম্ভ কৰক</span>
+        <span class="btn-arrow" aria-hidden="true">→</span>
+      </a>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <div class="footer-caption" aria-hidden="true">
+    <span class="content-en">Touch the screen to begin your journey · Assam Heritage Digital Initiative</span>
+    <span class="content-as" style="font-family:'Noto Serif Bengali',serif;">স্ক্ৰীণ স্পৰ্শ কৰক · অসম ঐতিহ্য ডিজিটেল উদ্যোগ</span>
+  </div>
+
+  <script>
+    // Disable right-click
+    document.addEventListener('contextmenu', e => e.preventDefault());
+
+    // Disable text selection drag
+    document.addEventListener('dragstart', e => e.preventDefault());
+
+    // Disable keyboard shortcuts common in kiosk abuse
+    document.addEventListener('keydown', e => {
+      if (
+        e.key === 'F5' ||
+        (e.ctrlKey && ['r','R','u','U','s','S','p','P','a','A'].includes(e.key)) ||
+        e.key === 'F12'
+      ) e.preventDefault();
+    });
+
+    // Language toggle
+    function setLang(lang) {
+      if (lang === 'as') {
+        document.body.classList.add('lang-as');
+        document.getElementById('btn-as').classList.add('active');
+        document.getElementById('btn-en').classList.remove('active');
+        document.getElementById('btn-as').setAttribute('aria-pressed','true');
+        document.getElementById('btn-en').setAttribute('aria-pressed','false');
+      } else {
+        document.body.classList.remove('lang-as');
+        document.getElementById('btn-en').classList.add('active');
+        document.getElementById('btn-as').classList.remove('active');
+        document.getElementById('btn-en').setAttribute('aria-pressed','true');
+        document.getElementById('btn-as').setAttribute('aria-pressed','false');
+      }
+    }
+
+    // Ripple effect on START button tap (touch devices)
+    document.querySelector('.btn-start').addEventListener('pointerdown', function(e) {
+      this.style.setProperty('--ripple-x', e.offsetX + 'px');
+      this.style.setProperty('--ripple-y', e.offsetY + 'px');
+    });
+
+    // Idle dim after 3 min (kiosk UX)
+    let idleTimer;
+    function resetIdle() {
+      clearTimeout(idleTimer);
+      document.body.style.opacity = '1';
+      document.body.style.transition = 'opacity 1s ease';
+      idleTimer = setTimeout(() => {
+        document.body.style.opacity = '0.45';
+        document.body.style.transition = 'opacity 4s ease';
+      }, 180000);
+    }
+    ['touchstart','mousemove','keydown','click'].forEach(ev =>
+      document.addEventListener(ev, resetIdle, { passive: true })
+    );
+    resetIdle();
+  </script>
+</body>
+</html>
